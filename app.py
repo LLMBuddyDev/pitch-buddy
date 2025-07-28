@@ -214,6 +214,10 @@ def render_single_copy_button(pitch, output_type):
 # --- Streamlit UI ---
 st.title("PitchBuddy")
 
+# Note about other LLM Buddy bots
+st.markdown("Want a different LLM Buddy bot? Click [here](https://llmbuddies.com).")
+st.write("---")
+
 # Check for API keys
 if not OPENAI_API_KEY or not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
     st.warning("⚠️ API keys not configured. Please check your environment variables or secrets.toml file.")

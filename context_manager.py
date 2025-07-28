@@ -104,7 +104,7 @@ def get_workspace_key():
     
     if not st.session_state.workspace_key:
         st.subheader("🔑 Enter Your Workspace Key")
-        st.info("Choose a unique workspace key to securely store your company contexts. This key is like a password - only you will have access to your data. Make sure to store your key in a password manager.")
+        st.info("Choose a unique workspace key to securely store your company contexts. This key is like a password - only you will have access to your data. Make sure to store your key in a password manager. If you have already created a key, just re-enter it below.")
         
         st.write("**Step 1: Choose your workspace key**")
         workspace_input = st.text_input(
