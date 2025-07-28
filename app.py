@@ -55,19 +55,6 @@ def increment_usage():
 # Apply usage protection
 check_usage_limit()
 
-# Temporarily disabled custom font to debug icon issue
-# st.markdown("""
-# <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro&display=swap" rel="stylesheet">
-# <style>
-# html, body, [class*="css"]  {
-#     font-family: 'Be Vietnam Pro', sans-serif !important;
-# }
-# textarea, input, button, select, div, span {
-#     font-family: 'Be Vietnam Pro', sans-serif !important;
-# }
-# </style>
-# """, unsafe_allow_html=True)
-
 # --- Utilities ---
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)

@@ -145,7 +145,7 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
     # Check if we're creating a new context
     creating_new = st.session_state.get("creating_new_context", False)
     
-    with st.expander("⚙️ Context Settings", expanded=creating_new or not context_name):
+    with st.expander("Edit Context", expanded=creating_new or not context_name):
         
         # Context name
         if creating_new:
