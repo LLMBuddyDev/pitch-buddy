@@ -213,17 +213,12 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
         
         with col1:
             if st.button("💾 Save Context"):
-                if creating_new:
-                    # Auto-generate context name from company name if missing
-                    if not company_name:
-                        st.error("Please provide a company name to create a new context.")
-                        return None
-                    final_context_name = company_name
-                elif context_name:
-                    final_context_name = context_name
-                else:
-                    st.error("Please provide a context name")
+                if not company_name:
+                    st.error("Please provide a company name.")
                     return None
+                
+                # Company name IS the context name
+                final_context_name = company_name
                 
                 # Build context data
                 updated_context = {
