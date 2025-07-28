@@ -113,12 +113,13 @@ def get_workspace_key():
             help="This key encrypts your data and keeps it private. Choose something memorable but unique to you."
         )
         
-        if st.button("Access Workspace") and workspace_input.strip():
-            st.session_state.workspace_key = workspace_input.strip()
-            st.success("✅ Workspace accessed! Your contexts will be saved securely.")
-            st.rerun()
-        elif st.button("Access Workspace"):
-            st.error("Please enter a workspace key.")
+        if st.button("Access Workspace"):
+            if workspace_input.strip():
+                st.session_state.workspace_key = workspace_input.strip()
+                st.success("✅ Workspace accessed! Your contexts will be saved securely.")
+                st.rerun()
+            else:
+                st.error("Please enter a workspace key.")
         
         st.stop()
     
