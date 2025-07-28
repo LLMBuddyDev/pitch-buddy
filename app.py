@@ -234,7 +234,7 @@ if not OPENAI_API_KEY or not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
 
 # Usage display in sidebar
 with st.sidebar:
-    st.header("📊 Usage")
+    st.caption("Check your daily usage limit")
     daily_count = st.session_state.get('daily_count', 0)
     remaining = DAILY_LIMIT - daily_count
     st.metric("Requests Today", daily_count, f"{remaining} remaining")
