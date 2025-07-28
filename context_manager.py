@@ -104,7 +104,7 @@ def get_workspace_key():
     
     if not st.session_state.workspace_key:
         st.subheader("🔑 Enter Your Workspace Key")
-        st.info("Choose a unique workspace key to securely store your company contexts. This key is like a password - only you will have access to your data.")
+        st.info("Choose a unique workspace key to securely store your company contexts. This key is like a password - only you will have access to your data. Make sure to store your key in a password manager.")
         
         workspace_input = st.text_input(
             "Workspace Key:", 
@@ -113,13 +113,24 @@ def get_workspace_key():
             help="This key encrypts your data and keeps it private. Choose something memorable but unique to you."
         )
         
+        workspace_confirm = st.text_input(
+            "Confirm Workspace Key:", 
+            type="password",
+            placeholder="Re-enter the same key",
+            help="Enter the same workspace key again to confirm"
+        )
+        
         if st.button("Access Workspace"):
-            if workspace_input.strip():
+            if not workspace_input.strip():
+                st.error("Please enter a workspace key.")
+            elif not workspace_confirm.strip():
+                st.error("Please confirm your workspace key.")
+            elif workspace_input.strip() != workspace_confirm.strip():
+                st.error("⚠️ Workspace keys don't match. Please make sure both entries are identical.")
+            else:
                 st.session_state.workspace_key = workspace_input.strip()
                 st.success("✅ Workspace accessed! Your contexts will be saved securely.")
                 st.rerun()
-            else:
-                st.error("Please enter a workspace key.")
         
         st.stop()
     
