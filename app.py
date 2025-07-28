@@ -286,7 +286,7 @@ if selected_context_name and current_context:
             combined_company_info = company_summary_internal
             
             # Build enhanced task instruction with user specifications
-            base_task_instruction = {
+            task_instructions = {
                 "Email outreach": (
                     "Write a professional email outreach message (under 150 words) in a friendly, professional tone. "
                     "Include a clear subject line. Be specific with addressing the prospect. "
@@ -311,7 +311,9 @@ if selected_context_name and current_context:
                     "Explain how our product might be introduced and discussed in a longer meeting with the prospect, and some topics to expand upon during a meeting. "
                     "Emphasize alignment with their personal background and company priorities. Use a neutral internal tone."
                 ),
-            }.get(output_type, base_task_instruction.get("Email outreach"))
+            }
+            
+            base_task_instruction = task_instructions.get(output_type, task_instructions["Email outreach"])
             
             # Add message instructions if provided
             if message_instructions.strip():
