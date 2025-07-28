@@ -108,10 +108,25 @@ def render_context_selector(context_manager: ContextManager):
                 st.session_state.creating_new_context = True
                 st.session_state.editing_context = True
         with col3:
-            if selected_context and st.button("Delete This Context", key="quick_delete"):
-                context_manager.delete_context(selected_context)
-                st.success(f"✅ Deleted '{selected_context}'!")
-                st.rerun()
+            if selected_context and st.button("🗑️ Delete", key="quick_delete"):
+                # Add confirmation using session state
+                if not st.session_state.get("confirm_delete", False):
+                    st.session_state.confirm_delete = True
+                    st.warning(f"⚠️ Are you sure you want to delete '{selected_context}'? This cannot be undone!")
+                    
+                    col_yes, col_no = st.columns(2)
+                    with col_yes:
+                        if st.button("✅ Yes, Delete", key="confirm_yes"):
+                            context_manager.delete_context(selected_context)
+                            st.success(f"✅ Deleted '{selected_context}'!")
+                            st.session_state.confirm_delete = False
+                            st.rerun()
+                    with col_no:
+                        if st.button("❌ Cancel", key="confirm_no"):
+                            st.session_state.confirm_delete = False
+                            st.rerun()
+                else:
+                    st.session_state.confirm_delete = False
     
     return selected_context
 
@@ -237,10 +252,24 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
         
         with col3:
             if not creating_new and context_name:
-                if st.button("Delete This Context"):
-                    context_manager.delete_context(context_name)
-                    st.success(f"Context '{context_name}' deleted!")
-                    st.rerun()
+                if st.button("🗑️ Delete"):
+                    if not st.session_state.get("confirm_editor_delete", False):
+                        st.session_state.confirm_editor_delete = True
+                        st.warning(f"⚠️ Are you sure you want to delete '{context_name}'? This cannot be undone!")
+                        
+                        col_yes, col_no = st.columns(2)
+                        with col_yes:
+                            if st.button("✅ Yes, Delete", key="editor_confirm_yes"):
+                                context_manager.delete_context(context_name)
+                                st.success(f"Context '{context_name}' deleted!")
+                                st.session_state.confirm_editor_delete = False
+                                st.rerun()
+                        with col_no:
+                            if st.button("❌ Cancel", key="editor_confirm_no"):
+                                st.session_state.confirm_editor_delete = False
+                                st.rerun()
+                    else:
+                        st.session_state.confirm_editor_delete = False
         
         if creating_new:
             if st.button("❌ Cancel"):

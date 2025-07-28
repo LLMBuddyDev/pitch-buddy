@@ -20,6 +20,64 @@ else:
 if 'context_manager' not in st.session_state:
     st.session_state.context_manager = ContextManager()
 
+# --- Usage Protection ---
+ACCESS_CODE = "pitch2024"  # Change this to your preferred access code
+DAILY_LIMIT = 20  # Maximum requests per day per session
+
+def check_access():
+    """Check if user has entered correct access code"""
+    if 'access_granted' not in st.session_state:
+        st.session_state.access_granted = False
+    
+    if not st.session_state.access_granted:
+        st.title("🔒 PitchBuddy Access")
+        st.info("Please enter the access code to use PitchBuddy.")
+        
+        access_input = st.text_input("Access Code:", type="password", key="access_input")
+        
+        if st.button("Submit"):
+            if access_input == ACCESS_CODE:
+                st.session_state.access_granted = True
+                st.success("✅ Access granted! Refreshing page...")
+                st.rerun()
+            else:
+                st.error("❌ Incorrect access code.")
+        
+        st.stop()  # Stop execution if access not granted
+
+def check_usage_limit():
+    """Check and enforce daily usage limits"""
+    import datetime
+    
+    today = datetime.date.today().isoformat()
+    
+    # Initialize usage tracking
+    if 'usage_date' not in st.session_state or st.session_state.usage_date != today:
+        st.session_state.usage_date = today
+        st.session_state.daily_count = 0
+    
+    # Check if limit exceeded
+    if st.session_state.daily_count >= DAILY_LIMIT:
+        st.error(f"⚠️ Daily usage limit reached ({DAILY_LIMIT} requests). Please try again tomorrow.")
+        st.info("This limit helps prevent unexpected API charges.")
+        st.stop()
+    
+    return True
+
+def increment_usage():
+    """Increment the usage counter"""
+    if 'daily_count' not in st.session_state:
+        st.session_state.daily_count = 0
+    st.session_state.daily_count += 1
+    
+    remaining = DAILY_LIMIT - st.session_state.daily_count
+    if remaining <= 5:
+        st.warning(f"⚠️ {remaining} requests remaining today")
+
+# Apply access control
+check_access()
+check_usage_limit()
+
 #attempting to put Be Vietnam Pro (a la Ted's lore) in all UI. We will see how this goes lol 
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro&display=swap" rel="stylesheet">
@@ -155,6 +213,21 @@ if not OPENAI_API_KEY or not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
     st.warning("⚠️ API keys not configured. Please check your environment variables or secrets.toml file.")
     st.stop()
 
+# Usage display in sidebar
+with st.sidebar:
+    st.header("📊 Usage")
+    daily_count = st.session_state.get('daily_count', 0)
+    remaining = DAILY_LIMIT - daily_count
+    st.metric("Requests Today", daily_count, f"{remaining} remaining")
+    
+    if remaining <= 5:
+        st.warning("⚠️ Low requests remaining")
+    
+    st.markdown("---")
+    st.markdown("**🔒 Access Code:** `pitch2024`")
+    st.markdown("**📝 Daily Limit:** 20 requests")
+    st.caption("Limits reset daily to prevent API overcharges")
+
 # Context Management Section
 selected_context_name = render_context_selector(st.session_state.context_manager)
 current_context = render_context_editor(st.session_state.context_manager, selected_context_name)
@@ -211,7 +284,8 @@ if selected_context_name and current_context:
     output_type = st.radio(
         "Select output format",
         (
-            "Full outreach message",
+            "Email outreach",
+            "LinkedIn DM", 
             "Internal-fit summary",
             "Cold-call voicemail",
             "Long-form meeting prep"
@@ -220,7 +294,13 @@ if selected_context_name and current_context:
     )
 
     if st.button("Generate Pitch"):
+        # Check usage limit before making API call
+        check_usage_limit()
+        
         with st.spinner("Generating pitch..."):
+            # Increment usage counter
+            increment_usage()
+            
             # Combine profile information with personal notes
             combined_profile = extracted_profile_text
             if profile_notes.strip():
@@ -231,6 +311,16 @@ if selected_context_name and current_context:
             
             # Build enhanced task instruction with user specifications
             base_task_instruction = {
+                "Email outreach": (
+                    "Write a professional email outreach message (under 150 words) in a friendly, professional tone. "
+                    "Include a clear subject line. Be specific with addressing the prospect. "
+                    "Be sure to lean on their resume more than external data but consider both."
+                ),
+                "LinkedIn DM": (
+                    "Write a LinkedIn direct message (under 100 words) in a conversational, professional tone. "
+                    "Keep it concise and personalized. Focus on building connection and sparking interest. "
+                    "Be sure to reference their background and make it feel genuine, not salesy."
+                ),
                 "Internal-fit summary": (
                     "In 150 words or fewer, state how this organization is a strong fit for the product — "
                     "describe the best use case or alignment with their innovation, goals, or challenges. "
@@ -245,13 +335,7 @@ if selected_context_name and current_context:
                     "Explain how our product might be introduced and discussed in a longer meeting with the prospect, and some topics to expand upon during a meeting. "
                     "Emphasize alignment with their personal background and company priorities. Use a neutral internal tone."
                 ),
-            }.get(
-                output_type,
-                (
-                    "Write a full outreach message (under 150 words) in a friendly, professional tone. Be specific with addressing the prospect. "
-                    "Be sure to lean on their resume more than external data but consider both."
-                )
-            )
+            }.get(output_type, base_task_instruction.get("Email outreach"))
             
             # Add message instructions if provided
             if message_instructions.strip():
@@ -267,7 +351,8 @@ if selected_context_name and current_context:
             escaped_pitch = html.escape(pitch)
 
             copy_label = {
-                "Full outreach message": ("📋 Copy outreach message to clipboard", "Outreach message copied!"),
+                "Email outreach": ("📋 Copy email to clipboard", "Email copied!"),
+                "LinkedIn DM": ("📋 Copy LinkedIn DM to clipboard", "LinkedIn DM copied!"),
                 "Internal-fit summary": ("📋 Copy summary to clipboard", "Summary copied!"),
                 "Cold-call voicemail": ("📋 Copy voicemail to clipboard", "Voicemail copied!"),
                 "Long-form meeting prep": ("📋 Copy meeting prep to clipboard", "Meeting prep copied!")
