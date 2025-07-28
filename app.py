@@ -153,13 +153,18 @@ LinkedIn profile text:
     )
     return response.choices[0].message.content
 
-def generate_pitch(profile_summary, company_summary, product_info, task_instruction):
+def generate_pitch(profile_summary, company_summary, product_info, task_instruction, user_name=""):
     if not product_info:
         return "❌ No company context selected. Please create and select a company context first."
     
+    # Add user name to prompt if provided and it's an email
+    name_instruction = ""
+    if user_name.strip() and "email" in task_instruction.lower():
+        name_instruction = f"\nSign the email with: Best regards,\n{user_name.strip()}"
+    
     prompt = f"""
 You are a business development AI assistant.
-Your task: {task_instruction}
+Your task: {task_instruction}{name_instruction}
 
 ---
 PROSPECT PROFILE:
@@ -174,6 +179,13 @@ Company Information: {product_info.get('company_info', 'No information provided'
 ---
 
 Generate the requested content following the task instructions above. Pay special attention to any specific instructions provided (tone, length, style, key points, etc.).
+
+IMPORTANT: If this is an email, format your response as:
+SUBJECT: [subject line here]
+
+[email body here]
+
+This makes it easy to copy the subject and body separately.
 """
     response = openai_client.chat.completions.create(
         model="gpt-4",
@@ -181,6 +193,36 @@ Generate the requested content following the task instructions above. Pay specia
         temperature=0.7,
     )
     return response.choices[0].message.content
+
+def render_single_copy_button(pitch, output_type):
+    """Helper function to render a single copy button"""
+    escaped_pitch = html.escape(pitch)
+
+    copy_label = {
+        "Email outreach": ("📋 Copy email to clipboard", "Email copied!"),
+        "LinkedIn DM": ("📋 Copy LinkedIn DM to clipboard", "LinkedIn DM copied!"),
+        "Internal-fit summary": ("📋 Copy summary to clipboard", "Summary copied!"),
+        "Cold-call voicemail": ("📋 Copy voicemail to clipboard", "Voicemail copied!"),
+        "Long-form meeting prep": ("📋 Copy meeting prep to clipboard", "Meeting prep copied!")
+    }.get(output_type, ("📋 Copy pitch to clipboard", "Pitch copied!"))
+
+    copy_js = f"""
+    <div>
+      <textarea id="pitch-text" style="position:absolute; left:-1000px; top:-1000px;">{escaped_pitch}</textarea>
+      <button id="copy-btn" style="font-size: 18px; padding: 10px 20px; cursor: pointer;">
+        {copy_label[0]}
+      </button>
+      <script>
+        const btn = document.getElementById('copy-btn');
+        btn.onclick = function() {{
+          navigator.clipboard.writeText(document.getElementById('pitch-text').value).then(function() {{
+            btn.innerText = '{copy_label[1]}';
+          }});
+        }}
+      </script>
+    </div>
+    """
+    st.components.v1.html(copy_js, height=60)
 
 # --- Streamlit UI ---
 st.title("PitchBuddy")
@@ -249,6 +291,15 @@ if selected_context_name and current_context:
                 st.markdown(company_summary_internal)
 
     profile_notes = st.text_area("Optional: Add additional notes about the person", value="", placeholder="Anything beyond the LinkedIn: personal details, specific interests, recent achievements, mutual connections, etc.")
+    
+    # User name for email sign-offs
+    user_name = st.text_input(
+        "Your name (for email sign-offs):", 
+        value="", 
+        placeholder="e.g., John Smith",
+        help="We don't save this - it just automatically fills the email sign-offs"
+    )
+    st.caption("💡 **Note:** We don't save this - it just automatically fills the email sign-offs")
     
     message_instructions = st.text_area(
         "Specific message instructions:", 
@@ -321,38 +372,86 @@ if selected_context_name and current_context:
             else:
                 enhanced_task_instruction = base_task_instruction
 
-            pitch = generate_pitch(combined_profile, combined_company_info, current_context, enhanced_task_instruction)
+            pitch = generate_pitch(combined_profile, combined_company_info, current_context, enhanced_task_instruction, user_name)
             st.subheader("🎯 Generated Message")
             st.code(pitch, language="markdown")
 
-            # Copy to clipboard button
-            escaped_pitch = html.escape(pitch)
-
-            copy_label = {
-                "Email outreach": ("📋 Copy email to clipboard", "Email copied!"),
-                "LinkedIn DM": ("📋 Copy LinkedIn DM to clipboard", "LinkedIn DM copied!"),
-                "Internal-fit summary": ("📋 Copy summary to clipboard", "Summary copied!"),
-                "Cold-call voicemail": ("📋 Copy voicemail to clipboard", "Voicemail copied!"),
-                "Long-form meeting prep": ("📋 Copy meeting prep to clipboard", "Meeting prep copied!")
-            }.get(output_type, ("📋 Copy pitch to clipboard", "Pitch copied!"))
-
-            copy_js = f"""
-            <div>
-              <textarea id="pitch-text" style="position:absolute; left:-1000px; top:-1000px;">{escaped_pitch}</textarea>
-              <button id="copy-btn" style="font-size: 18px; padding: 10px 20px; cursor: pointer;">
-                {copy_label[0]}
-              </button>
-              <script>
-                const btn = document.getElementById('copy-btn');
-                btn.onclick = function() {{
-                  navigator.clipboard.writeText(document.getElementById('pitch-text').value).then(function() {{
-                    btn.innerText = '{copy_label[1]}';
-                  }});
-                }}
-              </script>
-            </div>
-            """
-            st.components.v1.html(copy_js, height=60)
+            # Handle email formatting with separate subject and body
+            if output_type == "Email outreach" and "SUBJECT:" in pitch:
+                # Parse subject and body
+                lines = pitch.split('\n')
+                subject_line = ""
+                body_lines = []
+                found_subject = False
+                
+                for line in lines:
+                    if line.startswith("SUBJECT:"):
+                        subject_line = line.replace("SUBJECT:", "").strip()
+                        found_subject = True
+                    elif found_subject and line.strip():
+                        body_lines.append(line)
+                
+                email_body = '\n'.join(body_lines).strip()
+                
+                if subject_line and email_body:
+                    st.write("---")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write("**📧 Subject Line:**")
+                        st.code(subject_line, language="text")
+                        
+                        # Subject copy button
+                        escaped_subject = html.escape(subject_line)
+                        subject_copy_js = f"""
+                        <div>
+                          <textarea id="subject-text" style="position:absolute; left:-1000px; top:-1000px;">{escaped_subject}</textarea>
+                          <button id="subject-copy-btn" style="font-size: 16px; padding: 8px 16px; cursor: pointer;">
+                            📋 Copy Subject
+                          </button>
+                          <script>
+                            const subjectBtn = document.getElementById('subject-copy-btn');
+                            subjectBtn.onclick = function() {{
+                              navigator.clipboard.writeText(document.getElementById('subject-text').value).then(function() {{
+                                subjectBtn.innerText = '✅ Subject Copied!';
+                                setTimeout(() => {{ subjectBtn.innerText = '📋 Copy Subject'; }}, 2000);
+                              }});
+                            }}
+                          </script>
+                        </div>
+                        """
+                        st.components.v1.html(subject_copy_js, height=50)
+                    
+                    with col2:
+                        st.write("**✉️ Email Body:**")
+                        st.code(email_body, language="text")
+                        
+                        # Body copy button
+                        escaped_body = html.escape(email_body)
+                        body_copy_js = f"""
+                        <div>
+                          <textarea id="body-text" style="position:absolute; left:-1000px; top:-1000px;">{escaped_body}</textarea>
+                          <button id="body-copy-btn" style="font-size: 16px; padding: 8px 16px; cursor: pointer;">
+                            📋 Copy Email Body
+                          </button>
+                          <script>
+                            const bodyBtn = document.getElementById('body-copy-btn');
+                            bodyBtn.onclick = function() {{
+                              navigator.clipboard.writeText(document.getElementById('body-text').value).then(function() {{
+                                bodyBtn.innerText = '✅ Email Copied!';
+                                setTimeout(() => {{ bodyBtn.innerText = '📋 Copy Email Body'; }}, 2000);
+                              }});
+                            }}
+                          </script>
+                        </div>
+                        """
+                        st.components.v1.html(body_copy_js, height=50)
+                else:
+                    # Fallback to regular copy button if parsing fails
+                    render_single_copy_button(pitch, output_type)
+            else:
+                # Regular copy button for non-email outputs
+                render_single_copy_button(pitch, output_type)
 
 elif not st.session_state.get("creating_new_context", False):
     st.info("👆 Create your first company context above to start generating pitches!")
