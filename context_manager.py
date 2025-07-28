@@ -255,11 +255,13 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
 def enhance_company_context(extracted_content: str, existing_info: str = "") -> str:
     """Use AI to enhance company context from uploaded documents"""
     try:
-        import openai
+        from openai import OpenAI
         from company_config import OPENAI_API_KEY
         
         if not OPENAI_API_KEY:
             return existing_info
+        
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
         
         prompt = f"""
 You are a helpful assistant that extracts and organizes company information from documents.
@@ -281,11 +283,11 @@ Please create an enhanced company information summary that combines the existing
 Make it comprehensive but concise. If there's existing information, enhance it rather than replace it entirely.
 """
         
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
-        return response.choices[0].message['content']
+        return response.choices[0].message.content
     except Exception:
         return existing_info 

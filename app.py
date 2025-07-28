@@ -1,5 +1,5 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 import PyPDF2
 import requests
 import json
@@ -10,9 +10,11 @@ from context_manager import ContextManager, render_context_selector, render_cont
 # --- Config ---
 st.set_page_config(page_title="PitchBuddy", layout="wide")
 
-# Initialize API key
+# Initialize OpenAI client
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+else:
+    openai_client = None
 
 # Initialize context manager
 if 'context_manager' not in st.session_state:
@@ -62,12 +64,12 @@ Profile text:
 \"\"\"
 """
     try:
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
         )
-        json_text = response.choices[0].message['content'].strip()
+        json_text = response.choices[0].message.content.strip()
         data = json.loads(json_text)
         return data.get("name", ""), data.get("title", ""), data.get("company", "")
     except Exception:
@@ -109,12 +111,12 @@ LinkedIn profile text:
 
 {combined_source}
 """
-    response = openai.ChatCompletion.create(
+    response = openai_client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5,
     )
-    return response.choices[0].message['content']
+    return response.choices[0].message.content
 
 def generate_pitch(profile_summary, company_summary, product_info, task_instruction):
     if not product_info:
@@ -138,12 +140,12 @@ Company Information: {product_info.get('company_info', 'No information provided'
 
 Generate the requested content following the task instructions above. Pay special attention to any specific instructions provided (tone, length, style, key points, etc.).
 """
-    response = openai.ChatCompletion.create(
+    response = openai_client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
     )
-    return response.choices[0].message['content']
+    return response.choices[0].message.content
 
 # --- Streamlit UI ---
 st.title("PitchBuddy")
