@@ -144,6 +144,7 @@ def create_default_context() -> Dict:
     return {
         "company_name": "",
         "company_info": "",
+        "user_name": "",
         "created": datetime.now().isoformat(),
         "last_updated": datetime.now().isoformat()
     }
@@ -230,6 +231,14 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
             placeholder="e.g., Acme Corporation, TechStart Inc"
         )
         
+        # User name for email signatures
+        user_name = st.text_input(
+            "Your Name (for email signatures):",
+            value=context_data.get("user_name", ""),
+            placeholder="e.g., John Smith",
+            help="This will automatically be used to sign your emails"
+        )
+        
         # Document upload section
         st.write("**📄 Auto-enhance from documents:**")
         uploaded_docs = st.file_uploader(
@@ -293,7 +302,8 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
                 # Build context data
                 updated_context = {
                     "company_name": company_name,
-                    "company_info": company_info
+                    "company_info": company_info,
+                    "user_name": user_name
                 }
                 
                 context_manager.save_context(final_context_name, updated_context, workspace_key)

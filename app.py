@@ -294,15 +294,6 @@ if selected_context_name and current_context:
 
     profile_notes = st.text_area("Optional: Add additional notes about the person", value="", placeholder="Anything beyond the LinkedIn: personal details, specific interests, recent achievements, mutual connections, etc.")
     
-    # User name for email sign-offs
-    user_name = st.text_input(
-        "Your name (for email sign-offs):", 
-        value="", 
-        placeholder="e.g., John Smith",
-        help="We don't save this - it just automatically fills the email sign-offs"
-    )
-    st.caption("💡 **Note:** We don't save this - it just automatically fills the email sign-offs")
-    
     message_instructions = st.text_area(
         "Specific message instructions:", 
         value="", 
@@ -374,6 +365,8 @@ if selected_context_name and current_context:
             else:
                 enhanced_task_instruction = base_task_instruction
 
+            # Get user name from context
+            user_name = current_context.get("user_name", "") if current_context else ""
             pitch = generate_pitch(combined_profile, combined_company_info, current_context, enhanced_task_instruction, user_name)
             st.subheader("🎯 Generated Message")
             st.code(pitch, language="markdown")
@@ -401,7 +394,13 @@ if selected_context_name and current_context:
                     
                     with col1:
                         st.write("**📧 Subject Line:**")
-                        st.code(subject_line, language="text")
+                        st.text_area(
+                            "Subject:",
+                            value=subject_line,
+                            height=50,
+                            disabled=True,
+                            label_visibility="collapsed"
+                        )
                         
                         # Subject copy button
                         escaped_subject = html.escape(subject_line)
@@ -426,7 +425,17 @@ if selected_context_name and current_context:
                     
                     with col2:
                         st.write("**✉️ Email Body:**")
-                        st.code(email_body, language="text")
+                        # Calculate appropriate height based on content
+                        email_lines = email_body.count('\n') + 1
+                        text_area_height = max(100, min(400, email_lines * 25))
+                        
+                        st.text_area(
+                            "Email Body:",
+                            value=email_body,
+                            height=text_area_height,
+                            disabled=True,
+                            label_visibility="collapsed"
+                        )
                         
                         # Body copy button
                         escaped_body = html.escape(email_body)
