@@ -1,75 +1,128 @@
 import json
 import os
+import hashlib
 import streamlit as st
 from datetime import datetime
 from typing import Dict, List, Optional
 
 class ContextManager:
     def __init__(self, storage_file="company_contexts.json"):
-        self.storage_file = storage_file
-        self.ensure_storage_exists()
+        # We'll use user-provided workspace keys for privacy
+        self.base_storage_dir = "user_contexts"
+        self.ensure_storage_dir()
     
-    def ensure_storage_exists(self):
-        """Create storage file if it doesn't exist"""
-        if not os.path.exists(self.storage_file):
-            with open(self.storage_file, 'w') as f:
-                json.dump({}, f)
+    def ensure_storage_dir(self):
+        """Create storage directory if it doesn't exist"""
+        if not os.path.exists(self.base_storage_dir):
+            os.makedirs(self.base_storage_dir)
     
-    def load_contexts(self) -> Dict:
-        """Load all contexts from storage"""
+    def get_user_file_path(self, workspace_key: str) -> str:
+        """Generate a unique file path based on workspace key"""
+        # Hash the workspace key for security and valid filename
+        key_hash = hashlib.sha256(workspace_key.encode()).hexdigest()[:16]
+        return os.path.join(self.base_storage_dir, f"contexts_{key_hash}.json")
+    
+    def load_contexts(self, workspace_key: str) -> Dict:
+        """Load contexts from user's workspace file"""
+        if not workspace_key:
+            return {}
+        
         try:
-            with open(self.storage_file, 'r') as f:
-                return json.load(f)
+            file_path = self.get_user_file_path(workspace_key)
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    return json.load(f)
+            return {}
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
     
-    def save_contexts(self, contexts: Dict):
-        """Save all contexts to storage"""
-        with open(self.storage_file, 'w') as f:
+    def save_contexts(self, contexts: Dict, workspace_key: str):
+        """Save contexts to user's workspace file"""
+        if not workspace_key:
+            return
+        
+        file_path = self.get_user_file_path(workspace_key)
+        with open(file_path, 'w') as f:
             json.dump(contexts, f, indent=2)
     
-    def get_context_names(self) -> List[str]:
-        """Get list of all context names"""
-        contexts = self.load_contexts()
+    def get_context_names(self, workspace_key: str) -> List[str]:
+        """Get list of all context names for this workspace"""
+        contexts = self.load_contexts(workspace_key)
         return list(contexts.keys())
     
-    def get_context(self, name: str) -> Optional[Dict]:
-        """Get a specific context by name"""
-        contexts = self.load_contexts()
+    def get_context(self, name: str, workspace_key: str) -> Optional[Dict]:
+        """Get a specific context by name for this workspace"""
+        contexts = self.load_contexts(workspace_key)
         return contexts.get(name)
     
-    def save_context(self, name: str, context_data: Dict):
-        """Save a context"""
-        contexts = self.load_contexts()
+    def save_context(self, name: str, context_data: Dict, workspace_key: str):
+        """Save a context to this workspace"""
+        if not workspace_key:
+            return
+        
+        contexts = self.load_contexts(workspace_key)
         context_data["last_updated"] = datetime.now().isoformat()
         contexts[name] = context_data
-        self.save_contexts(contexts)
+        self.save_contexts(contexts, workspace_key)
     
-    def delete_context(self, name: str):
-        """Delete a context"""
-        contexts = self.load_contexts()
+    def delete_context(self, name: str, workspace_key: str):
+        """Delete a context from this workspace"""
+        if not workspace_key:
+            return
+        
+        contexts = self.load_contexts(workspace_key)
         if name in contexts:
             del contexts[name]
-            self.save_contexts(contexts)
+            self.save_contexts(contexts, workspace_key)
     
-    def export_context(self, name: str) -> Optional[str]:
+    def export_context(self, name: str, workspace_key: str) -> Optional[str]:
         """Export a context as JSON string"""
-        context = self.get_context(name)
+        context = self.get_context(name, workspace_key)
         if context:
             return json.dumps(context, indent=2)
         return None
     
-    def import_context(self, json_string: str, context_name: str = None) -> bool:
-        """Import a context from JSON string"""
+    def import_context(self, json_string: str, workspace_key: str, context_name: str = None) -> bool:
+        """Import a context from JSON string to this workspace"""
+        if not workspace_key:
+            return False
+        
         try:
             context_data = json.loads(json_string)
             # Use company_name as the context identifier
             if not context_name:
                 context_name = context_data.get("company_name", "Imported Context")
-            self.save_context(context_name, context_data)
+            self.save_context(context_name, context_data, workspace_key)
             return True
         except json.JSONDecodeError:
             return False
+
+def get_workspace_key():
+    """Handle workspace key input and validation"""
+    if 'workspace_key' not in st.session_state:
+        st.session_state.workspace_key = ""
+    
+    if not st.session_state.workspace_key:
+        st.subheader("🔑 Enter Your Workspace Key")
+        st.info("Choose a unique workspace key to securely store your company contexts. This key is like a password - only you will have access to your data.")
+        
+        workspace_input = st.text_input(
+            "Workspace Key:", 
+            type="password",
+            placeholder="Enter a unique key (e.g., MyCompany2024)",
+            help="This key encrypts your data and keeps it private. Choose something memorable but unique to you."
+        )
+        
+        if st.button("Access Workspace") and workspace_input.strip():
+            st.session_state.workspace_key = workspace_input.strip()
+            st.success("✅ Workspace accessed! Your contexts will be saved securely.")
+            st.rerun()
+        elif st.button("Access Workspace"):
+            st.error("Please enter a workspace key.")
+        
+        st.stop()
+    
+    return st.session_state.workspace_key
 
 def create_default_context() -> Dict:
     """Create an empty context template"""
@@ -82,7 +135,8 @@ def create_default_context() -> Dict:
 
 def render_context_selector(context_manager: ContextManager):
     """Render the context selection UI"""
-    context_names = context_manager.get_context_names()
+    workspace_key = st.session_state.workspace_key
+    context_names = context_manager.get_context_names(workspace_key)
     
     st.subheader("🏢 Company Context Management")
     
@@ -117,7 +171,7 @@ def render_context_selector(context_manager: ContextManager):
                     col_yes, col_no = st.columns(2)
                     with col_yes:
                         if st.button("✅ Yes, Delete", key="confirm_yes"):
-                            context_manager.delete_context(selected_context)
+                            context_manager.delete_context(selected_context, workspace_key)
                             st.success(f"✅ Deleted '{selected_context}'!")
                             st.session_state.confirm_delete = False
                             st.rerun()
@@ -132,10 +186,11 @@ def render_context_selector(context_manager: ContextManager):
 
 def render_context_editor(context_manager: ContextManager, context_name: str = None):
     """Render the context editing UI"""
+    workspace_key = st.session_state.workspace_key
     
     # Initialize context data
     if context_name:
-        context_data = context_manager.get_context(context_name)
+        context_data = context_manager.get_context(context_name, workspace_key)
         if not context_data:
             context_data = create_default_context()
             context_data["company_name"] = context_name
@@ -145,7 +200,7 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
     # Check if we're creating a new context
     creating_new = st.session_state.get("creating_new_context", False)
     
-    with st.expander("Edit Context", expanded=creating_new or not context_name):
+    with st.expander("⚙️ Context Settings", expanded=creating_new or not context_name):
         
         # Context name
         if creating_new:
@@ -226,7 +281,7 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
                     "company_info": company_info
                 }
                 
-                context_manager.save_context(final_context_name, updated_context)
+                context_manager.save_context(final_context_name, updated_context, workspace_key)
                 st.success(f"✅ Context '{final_context_name}' saved!")
                 
                 # Reset state
@@ -236,7 +291,7 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
         with col2:
             if not creating_new and context_name:
                 if st.button("📥 Export"):
-                    exported = context_manager.export_context(context_name)
+                    exported = context_manager.export_context(context_name, workspace_key)
                     if exported:
                         st.download_button(
                             "⬇️ Download JSON",
@@ -255,7 +310,7 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
                         col_yes, col_no = st.columns(2)
                         with col_yes:
                             if st.button("✅ Yes, Delete", key="editor_confirm_yes"):
-                                context_manager.delete_context(context_name)
+                                context_manager.delete_context(context_name, workspace_key)
                                 st.success(f"Context '{context_name}' deleted!")
                                 st.session_state.confirm_editor_delete = False
                                 st.rerun()
@@ -273,7 +328,7 @@ def render_context_editor(context_manager: ContextManager, context_name: str = N
     
     # Return the current context for use in the app
     if context_name:
-        return context_manager.get_context(context_name)
+        return context_manager.get_context(context_name, workspace_key)
     return None
 
 def enhance_company_context(extracted_content: str, existing_info: str = "") -> str:

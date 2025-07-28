@@ -219,6 +219,10 @@ if not OPENAI_API_KEY or not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
     st.warning("⚠️ API keys not configured. Please check your environment variables or secrets.toml file.")
     st.stop()
 
+# Get workspace key for user privacy
+from context_manager import get_workspace_key
+workspace_key = get_workspace_key()
+
 # Usage display in sidebar
 with st.sidebar:
     st.caption("Check your daily usage limit")
@@ -232,6 +236,13 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**📝 Daily Limit:** 250 requests")
     st.caption("Limits reset daily to prevent API overcharges")
+    
+    # Workspace info
+    st.markdown("---")
+    st.caption(f"🔑 Workspace: {workspace_key[:8]}...")
+    if st.button("🔄 Change Workspace"):
+        st.session_state.workspace_key = ""
+        st.rerun()
 
 # Context Management Section
 selected_context_name = render_context_selector(st.session_state.context_manager)

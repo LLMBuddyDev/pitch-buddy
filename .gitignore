@@ -1,9 +1,11 @@
-# API Keys and secrets
+# Streamlit secrets (contains API keys)
 .streamlit/secrets.toml
-company_config_backup.py
 
-# Context storage
+# User data (shared contexts file)
 company_contexts.json
+
+# User workspace data (private contexts)
+user_contexts/
 
 # Python
 __pycache__/
