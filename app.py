@@ -21,29 +21,7 @@ if 'context_manager' not in st.session_state:
     st.session_state.context_manager = ContextManager()
 
 # --- Usage Protection ---
-ACCESS_CODE = "pitch2024"  # Change this to your preferred access code
-DAILY_LIMIT = 20  # Maximum requests per day per session
-
-def check_access():
-    """Check if user has entered correct access code"""
-    if 'access_granted' not in st.session_state:
-        st.session_state.access_granted = False
-    
-    if not st.session_state.access_granted:
-        st.title("🔒 PitchBuddy Access")
-        st.info("Please enter the access code to use PitchBuddy.")
-        
-        access_input = st.text_input("Access Code:", type="password", key="access_input")
-        
-        if st.button("Submit"):
-            if access_input == ACCESS_CODE:
-                st.session_state.access_granted = True
-                st.success("✅ Access granted! Refreshing page...")
-                st.rerun()
-            else:
-                st.error("❌ Incorrect access code.")
-        
-        st.stop()  # Stop execution if access not granted
+DAILY_LIMIT = 250  # Maximum requests per day per session
 
 def check_usage_limit():
     """Check and enforce daily usage limits"""
@@ -71,11 +49,10 @@ def increment_usage():
     st.session_state.daily_count += 1
     
     remaining = DAILY_LIMIT - st.session_state.daily_count
-    if remaining <= 5:
+    if remaining <= 10:
         st.warning(f"⚠️ {remaining} requests remaining today")
 
-# Apply access control
-check_access()
+# Apply usage protection
 check_usage_limit()
 
 #attempting to put Be Vietnam Pro (a la Ted's lore) in all UI. We will see how this goes lol 
@@ -220,12 +197,11 @@ with st.sidebar:
     remaining = DAILY_LIMIT - daily_count
     st.metric("Requests Today", daily_count, f"{remaining} remaining")
     
-    if remaining <= 5:
+    if remaining <= 10:
         st.warning("⚠️ Low requests remaining")
     
     st.markdown("---")
-    st.markdown("**🔒 Access Code:** `pitch2024`")
-    st.markdown("**📝 Daily Limit:** 20 requests")
+    st.markdown("**📝 Daily Limit:** 250 requests")
     st.caption("Limits reset daily to prevent API overcharges")
 
 # Context Management Section
