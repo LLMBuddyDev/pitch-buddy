@@ -106,6 +106,7 @@ def get_workspace_key():
         st.subheader("🔑 Enter Your Workspace Key")
         st.info("Choose a unique workspace key to securely store your company contexts. This key is like a password - only you will have access to your data. Make sure to store your key in a password manager.")
         
+        st.write("**Step 1: Choose your workspace key**")
         workspace_input = st.text_input(
             "Workspace Key:", 
             type="password",
@@ -113,23 +114,25 @@ def get_workspace_key():
             help="This key encrypts your data and keeps it private. Choose something memorable but unique to you."
         )
         
+        st.write("**Step 2: Confirm your workspace key**")
         workspace_confirm = st.text_input(
             "Confirm Workspace Key:", 
             type="password",
-            placeholder="Re-enter the same key",
+            placeholder="Re-enter the exact same key",
             help="Enter the same workspace key again to confirm"
         )
         
-        if st.button("Access Workspace"):
+        st.write("---")
+        if st.button("🚀 Access Workspace"):
             if not workspace_input.strip():
-                st.error("Please enter a workspace key.")
+                st.error("❌ Please enter a workspace key in Step 1.")
             elif not workspace_confirm.strip():
-                st.error("Please confirm your workspace key.")
+                st.error("❌ Please confirm your workspace key in Step 2.")
             elif workspace_input.strip() != workspace_confirm.strip():
-                st.error("⚠️ Workspace keys don't match. Please make sure both entries are identical.")
+                st.error("⚠️ The keys don't match! Please make sure both Step 1 and Step 2 have identical entries.")
             else:
                 st.session_state.workspace_key = workspace_input.strip()
-                st.success("✅ Workspace accessed! Your contexts will be saved securely.")
+                st.success("✅ Perfect! Workspace accessed with matching keys!")
                 st.rerun()
         
         st.stop()
